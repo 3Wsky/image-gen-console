@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#060816" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>OpenAI Images API 生图控制台</title>
+  <meta name="description" content="基于 OpenAI Images API 兼容接口的在线生图页面，支持提示词、尺寸、数量、质量和 PNG 输出。" />
+  <style>
+    :root {
+      --bg: #060816;
+      --bg-soft: rgba(14, 19, 38, 0.78);
+      --panel: rgba(12, 16, 32, 0.82);
+      --panel-strong: rgba(15, 21, 42, 0.94);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.58);
+      --subtle: rgba(255, 255, 255, 0.34);
+      --cyan: #62e7ff;
+      --violet: #9b7bff;
+      --amber: #ffbe5c;
+      --green: #55e39b;
+      --red: #ff6b7a;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 16px;
+      --max: 1280px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      color: var(--text);
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      overscroll-behavior-y: contain;
+      -webkit-text-size-adjust: 100%;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(98, 231, 255, 0.12), transparent 26%),
+        radial-gradient(circle at 88% 14%, rgba(155, 123, 255, 0.14), transparent 28%),
+        radial-gradient(circle at 72% 100%, rgba(85, 227, 155, 0.1), transparent 24%),
+        linear-gradient(180deg, #040611 0%, #060816 46%, #070a19 100%);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea {
+      font: inherit;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      border-radius: 16px;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    input[type="text"], input[type="password"], textarea {
+      font-size: 16px; /* 防止 iOS 自动缩放 */
+    }
+
+    .page {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+      padding: 24px 0 56px;
+    }
+
+    .glass {
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: var(--bg-soft);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 28px;
+      background: linear-gradient(180deg, rgba(13, 18, 36, 0.88), rgba(9, 13, 28, 0.78));
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(255, 190, 92, 0.16), transparent 25%),
+        radial-gradient(circle at 100% 0%, rgba(98, 231, 255, 0.16), transparent 22%),
+        radial-gradient(circle at 100% 100%, rgba(155, 123, 255, 0.16), transparent 26%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: space-between;
+      align-items: end;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: 1px solid rgba(98, 231, 255, 0.18);
+      border-radius: 999px;
+      background: rgba(98, 231, 255, 0.08);
+      color: var(--cyan);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 10px;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 48px;
+      padding: 0 20px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 15px;
+      cursor: pointer;
+      transition: 180ms ease;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .button:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.07); }
+    .button:active { transform: scale(0.97); opacity: 0.9; }
+    .button.primary {
+      border-color: rgba(255, 107, 107, 0.3);
+      background: linear-gradient(135deg, #ff6b6b, #ff8e53, #ff6b6b);
+      background-size: 200% 200%;
+      color: #fff;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      animation: luckyGradient 3s ease infinite;
+    }
+    @keyframes luckyGradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .button.primary:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 24px rgba(255, 107, 107, 0.35);
+    }
+    .button.ghost {
+      background: rgba(98, 231, 255, 0.08);
+      border-color: rgba(98, 231, 255, 0.18);
+      color: var(--cyan);
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      min-width: min(100%, 420px);
+    }
+
+    .mini-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mini-card .label {
+      color: var(--subtle);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .mini-card .value {
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      transition: transform 200ms ease;
+    }
+    .mini-card .value.pop {
+      animation: numPop 400ms ease;
+    }
+    @keyframes numPop {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 420px minmax(0, 1fr);
+      gap: 20px;
+      margin-top: 22px;
+    }
+
+    .panel { padding: 22px; }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .panel p.lead {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack { display: grid; gap: 16px; }
+    .field { display: grid; gap: 8px; }
+    .field.two { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field.three { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    label {
+      font-size: 12px;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 13px 14px;
+      outline: none;
+      transition: 160ms ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(98, 231, 255, 0.32);
+      box-shadow: 0 0 0 4px rgba(98, 231, 255, 0.08);
+    }
+
+    textarea { min-height: 154px; resize: vertical; }
+
+    .hint {
+      margin-top: -2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .notice {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 190, 92, 0.16);
+      background: rgba(255, 190, 92, 0.08);
+      color: #ffe5b6;
+      font-size: 13px;
+    }
+
+    .status {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 18px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+
+    .status.show { display: block; }
+    .status.error {
+      border-color: rgba(255, 107, 122, 0.18);
+      background: rgba(255, 107, 122, 0.08);
+      color: #ffd3d8;
+    }
+    .status.success {
+      border-color: rgba(85, 227, 155, 0.18);
+      background: rgba(85, 227, 155, 0.08);
+      color: #d9ffeb;
+    }
+
+    .result-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .badge {
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .results {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .result-card {
+      flex: 0 0 auto;
+      width: 280px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--panel);
+      cursor: pointer;
+      transition: transform 200ms ease, box-shadow 200ms ease;
+      scroll-snap-align: start;
+    }
+    .result-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+    .result-card:active { transform: scale(0.98); }
+
+    .result-card .img-wrap {
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .result-card .img-wrap img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+    .result-card .img-wrap .zoom-hint {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(6px);
+      color: rgba(255,255,255,0.7);
+      font-size: 11px;
+      opacity: 0;
+      transition: opacity 180ms;
+      pointer-events: none;
+    }
+    .result-card:hover .zoom-hint { opacity: 1; }
+
+    .result-card .meta {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .result-card .meta .title {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .result-card .meta .title .nick {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(155, 123, 255, 0.12);
+      color: var(--violet);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      min-height: 360px;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      color: var(--muted);
+      text-align: center;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* --- Progress animation --- */
+    .progress-panel {
+      display: none;
+      padding: 28px 24px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .progress-panel.show { display: block; }
+
+    .progress-stage {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .progress-spinner {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.08);
+      border-top-color: var(--amber);
+      animation: spin 0.9s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .progress-stage .stage-text { flex: 1; }
+    .progress-stage .stage-text .stage-label { font-size: 15px; font-weight: 600; color: var(--text); }
+    .progress-stage .stage-text .stage-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .progress-bar-wrap {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--amber), var(--cyan));
+      transition: width 800ms ease;
+    }
+
+    .progress-elapsed {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--subtle);
+      text-align: right;
+    }
+
+    /* --- Lightbox --- */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.88);
+      backdrop-filter: blur(12px);
+      place-items: center;
+      cursor: zoom-out;
+    }
+    .lightbox.show { display: grid; }
+
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      cursor: default;
+    }
+
+    .lightbox-close {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.7);
+      font-size: 22px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: 180ms;
+      z-index: 10000;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+    /* --- History gallery --- */
+    .history-section h2 { margin: 0 0 6px; font-size: 20px; letter-spacing: -0.03em; }
+    .history-section .lead { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+    .history-grid {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .history-item {
+      flex: 0 0 auto;
+      width: 180px;
+      position: relative;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: var(--panel);
+      cursor: pointer;
+      transition: transform 180ms, box-shadow 180ms;
+      scroll-snap-align: start;
+    }
+    .history-item:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.35); }
+    .history-item:active { transform: scale(0.97); }
+    .history-item img { display: block; width: 100%; height: auto; object-fit: contain; background: rgba(255,255,255,0.03); }
+    .history-item .history-meta {
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-item .history-meta .nick-tag {
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(155, 123, 255, 0.1);
+      color: var(--violet);
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .history-item .del-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.5);
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      display: none;
+      place-items: center;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .history-item:hover .del-btn { display: grid; }
+    .history-item .del-btn:hover { background: rgba(255,107,122,0.5); color: #fff; }
+
+    .button.sm { height: 38px; padding: 0 14px; font-size: 13px; border-radius: 999px; }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* ---- Mobile: 720px 以下 ---- */
+    @media (max-width: 720px) {
+      .page { width: min(calc(100% - 16px), var(--max)); padding-top: 8px; padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+      .hero { padding: 16px; border-radius: 22px; }
+      .hero-inner { gap: 14px; }
+      .panel { padding: 16px; border-radius: 22px; }
+      .field.two, .field.three, .hero-stats { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+      .eyebrow { font-size: 10px; }
+      .result-card { width: 65vw; min-width: 200px; }
+      .history-item { width: 45vw; min-width: 130px; }
+      .glass { border-radius: 22px; }
+      .mini-card .value { font-size: 15px; }
+      .button.primary { height: 52px; font-size: 16px; }
+      textarea { min-height: 100px; }
+      .progress-panel { padding: 20px 16px; }
+      .lightbox-close { top: calc(env(safe-area-inset-top, 20px) + 8px); right: 16px; }
+    }
+
+    /* ---- 小屏手机: 375px 以下 ---- */
+    @media (max-width: 375px) {
+      .page { width: calc(100% - 12px); }
+      .hero, .panel { padding: 14px; }
+      h1 { font-size: 24px; }
+      .result-card { width: 75vw; }
+      .history-item { width: 55vw; }
+      .hero-stats { gap: 8px; }
+      .mini-card { padding: 10px; }
+    }
+
+    /* ---- iOS specific ---- */
+    @supports (-webkit-touch-callout: none) {
+      .results, .history-grid {
+        -webkit-overflow-scrolling: touch;
+      }
+      .result-card .img-wrap .zoom-hint { display: none; }
+      input, select, textarea {
+        border-radius: 12px;
+      }
+    }
+
+    /* ---- 鸿蒙 HarmonyOS / Android WebView ---- */
+    @media (hover: none) and (pointer: coarse) {
+      .result-card:hover { transform: none; box-shadow: none; }
+      .history-item:hover { transform: none; box-shadow: none; }
+      .button:hover { transform: none; background: rgba(255, 255, 255, 0.04); }
+      .result-card .img-wrap .zoom-hint { display: none; }
+      .del-btn { display: grid !important; opacity: 0.6; }
+    }
+
+    /* ---- 横屏手机 ---- */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .hero { padding: 12px 16px; }
+      h1 { font-size: 22px; }
+      .hero-stats { display: none; }
+      .layout { gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero glass">
+      <div class="hero-inner">
+        <div>
+          <div class="eyebrow">Image Generation Console</div>
+          <h1>在线生图控制台</h1>
+          <p>输入 API Key 和提示词即可生成图片。多人同时使用时，系统会自动排队，避免远端接口过载。</p>
+          <div class="hero-actions">
+            <button id="scrollToForm" class="button primary">立即开始生图</button>
+            <a class="button ghost" href="./index.html">返回文档说明</a>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--subtle);">构建更多智能体，联系17899916520</div>
+        </div>
+        <div class="hero-stats">
+          <div class="mini-card">
+            <div class="label">累计用户</div>
+            <div class="value" style="color: var(--cyan);" id="statVisits">0</div>
+          </div>
+          <div class="mini-card">
+            <div class="label">累计生图</div>
+            <div class="value" style="color: var(--amber);" id="statImages">0</div>
+          </div>
+          <div class="mini-card">
+            <div class="label">返回格式</div>
+            <div class="value" style="color: var(--green);">b64_json</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <section id="generatorPanel" class="panel glass">
+        <h2>生成参数</h2>
+        <p class="lead">输入提示词和参数后点击生成即可，API Key 由服务端自动填入。</p>
+
+        <div class="stack">
+          <div class="notice">本页通过 `/api/ai/public/images/generations` 代理调用远端接口，API Key 由服务端自动填入，无需手动输入。</div>
+
+          <div class="field">
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" placeholder="例如：一位韩系女团风格的年轻女孩，超写实摄影，9:16，iPhone 15 Pro Max 广角镜头质感"></textarea>
+          </div>
+
+          <div class="field two">
+            <div>
+              <label for="size">图片比例</label>
+              <select id="size">
+                <option value="1024x1024">1:1 正方形</option>
+                <option value="1024x1536" selected>9:16 竖版</option>
+                <option value="1536x1024">16:9 横版</option>
+                <option value="1024x768">4:3 横版</option>
+                <option value="768x1024">3:4 竖版</option>
+              </select>
+            </div>
+            <div>
+              <label for="quality">Quality</label>
+              <select id="quality">
+                <option value="high" selected>high</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field three">
+            <div>
+              <label for="count">N</label>
+              <select id="count">
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+            <div>
+              <label for="format">Output Format</label>
+              <select id="format">
+                <option value="png" selected>png</option>
+              </select>
+            </div>
+            <div>
+              <label for="timeout">Timeout</label>
+              <select id="timeout">
+                <option value="120">120s</option>
+                <option value="180" selected>180s</option>
+                <option value="300">300s</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="status" class="status"></div>
+
+          <div class="actions">
+            <button id="optimizeBtn" class="button primary">🎲 摇一摇生成提示词</button>
+            <button id="generateBtn" class="button primary">生成图片</button>
+            <button id="fillDemoBtn" class="button">填入示例 Prompt</button>
+            <button id="clearBtn" class="button">清空结果</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel glass">
+        <div class="result-head">
+          <div>
+            <h2>生成结果</h2>
+            <p class="lead">生成完成后，图片会按原始比例显示。单击可放大查看。</p>
+          </div>
+          <div class="badges">
+            <span id="modelBadge" class="badge">Model: gpt-image-2</span>
+            <span id="sizeBadge" class="badge">比例: -</span>
+            <span id="countBadge" class="badge">N: -</span>
+          </div>
+        </div>
+
+        <div id="progressPanel" class="progress-panel">
+          <div class="progress-stage">
+            <div class="progress-spinner"></div>
+            <div class="stage-text">
+              <div id="stageLabel" class="stage-label">正在理解提示词…</div>
+              <div id="stageSub" class="stage-sub">AI 正在解析你的描述</div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap">
+            <div id="progressFill" class="progress-bar-fill"></div>
+          </div>
+          <div id="progressElapsed" class="progress-elapsed">已用时 0s</div>
+        </div>
+
+        <div id="empty" class="empty">
+          <div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px;">还没有生成结果</div>
+            <div>输入 Key 和 Prompt 后，点击“生成图片”，这里会显示返回的图像预览。</div>
+          </div>
+        </div>
+
+        <div id="results" class="results"></div>
+      </section>
+    </div>
+
+    <!-- History gallery -->
+    <section id="historySection" class="history-section glass" style="display:none; padding:22px; margin-top:22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+        <h2 style="margin:0;">生成历史 <span id="adminModeBadge" style="display:none;background:var(--green);color:#000;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:6px;">全部记录</span></h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="adminToggleBtn" class="button sm" style="opacity:.5;font-size:11px;padding:4px 8px;" title="更多">⋮</button>
+          <button id="clearHistoryBtn" class="button sm">清空历史</button>
+        </div>
+      </div>
+      <div id="adminPanel" style="display:none; margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <input id="adminKeyInput" type="password" placeholder="密钥" style="width:140px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.04);color:var(--text);padding:6px 10px;font-size:12px;outline:none;">
+          <button id="adminKeyConfirm" class="button sm" style="font-size:11px;padding:4px 10px;">确认</button>
+          <span id="adminStatus" style="font-size:11px;color:var(--subtle);"></span>
+        </div>
+      </div>
+      <div id="historyGrid" class="history-grid" style="margin-top:16px;"></div>
+    </section>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox">
+    <button id="lightboxClose" class="lightbox-close">&times;</button>
+    <img id="lightboxImg" src="" alt="放大查看" />
+  </div>
+
+  <script>
+    // 后端地址配置
+    // CF Pages 上用相对路径（走 Functions 代理），本地开发直连后端
+    const savedBackend = localStorage.getItem('image_gen_backend_url');
+    const BASE_URL = window.location.protocol === 'file:'
+      ? 'http://localhost:3001'
+      : (savedBackend || '');
+    const endpoint = BASE_URL + '/api/ai/public/images/generations';
+    const HISTORY_ENDPOINT = BASE_URL + '/api/ai/public/images/history';
+    const STATS_ENDPOINT = BASE_URL + '/api/ai/public/images/stats';
+
+    const SIZE_RATIO_MAP = {
+      '1024x1024': '1:1',
+      '1024x1536': '9:16',
+      '1536x1024': '16:9',
+      '1024x768': '4:3',
+      '768x1024': '3:4',
+    };
+
+    const PROGRESS_STAGES = [
+      { label: '正在理解提示词…', sub: 'AI 正在解析你的描述', pct: 10 },
+      { label: '构思初始构图…', sub: '确定画面布局与主体位置', pct: 25 },
+      { label: '生成底稿…', sub: '绘制基础形状与色彩', pct: 40 },
+      { label: '细化细节…', sub: '添加纹理、光影与质感', pct: 60 },
+      { label: '渲染最终图像…', sub: '输出高清结果', pct: 80 },
+      { label: '即将完成…', sub: '最后处理与编码', pct: 92 },
+    ];
+
+    const statVisitsEl = document.getElementById('statVisits');
+    const statImagesEl = document.getElementById('statImages');
+
+    const apiKeyInput = { value: '' }; // placeholder, no longer in DOM
+    const promptInput = document.getElementById('prompt');
+    const sizeInput = document.getElementById('size');
+    const qualityInput = document.getElementById('quality');
+    const countInput = document.getElementById('count');
+    const formatInput = document.getElementById('format');
+    const timeoutInput = document.getElementById('timeout');
+    const optimizeBtn = document.getElementById('optimizeBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const fillDemoBtn = document.getElementById('fillDemoBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusBox = document.getElementById('status');
+    const results = document.getElementById('results');
+    const empty = document.getElementById('empty');
+    const progressPanel = document.getElementById('progressPanel');
+    const progressFill = document.getElementById('progressFill');
+    const stageLabel = document.getElementById('stageLabel');
+    const stageSub = document.getElementById('stageSub');
+    const progressElapsed = document.getElementById('progressElapsed');
+    const sizeBadge = document.getElementById('sizeBadge');
+    const countBadge = document.getElementById('countBadge');
+    const scrollToFormBtn = document.getElementById('scrollToForm');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxClose = document.getElementById('lightboxClose');
+    const historySection = document.getElementById('historySection');
+    const historyGrid = document.getElementById('historyGrid');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const adminToggleBtn = document.getElementById('adminToggleBtn');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminKeyInput = document.getElementById('adminKeyInput');
+    const adminKeyConfirm = document.getElementById('adminKeyConfirm');
+    const adminStatus = document.getElementById('adminStatus');
+    const adminModeBadge = document.getElementById('adminModeBadge');
+
+    let controller = null;
+    let progressTimer = null;
+    let elapsedTimer = null;
+
+    // --- History (server-side, IP isolated) ---
+    let adminKey = '';
+
+    async function fetchHistory() {
+      try {
+        const url = adminKey ? `${HISTORY_ENDPOINT}?admin_key=${encodeURIComponent(adminKey)}` : HISTORY_ENDPOINT;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        return data;
+      } catch { return { ok: false, data: [] }; }
+    }
+
+    async function deleteHistoryItem(id) {
+      const url = adminKey
+        ? `${HISTORY_ENDPOINT}/${id}?admin_key=${encodeURIComponent(adminKey)}`
+        : `${HISTORY_ENDPOINT}/${id}`;
+      await fetch(url, { method: 'DELETE' });
+      renderHistory();
+    }
+
+    async function clearAllHistory() {
+      const url = adminKey
+        ? `${HISTORY_ENDPOINT}?admin_key=${encodeURIComponent(adminKey)}`
+        : HISTORY_ENDPOINT;
+      await fetch(url, { method: 'DELETE' });
+      renderHistory();
+    }
+
+    async function renderHistory() {
+      const result = await fetchHistory();
+      const list = result.data || [];
+      if (!list.length) { historySection.style.display = 'none'; return; }
+      historySection.style.display = 'block';
+      historyGrid.innerHTML = '';
+      list.forEach((item) => {
+        const dataUrl = 'data:image/png;base64,' + item.b64_json;
+        const el = document.createElement('div');
+        el.className = 'history-item';
+        const isAdmin = result.admin === true;
+        const ipTag = isAdmin && item.ip ? `<span class="nick-tag">${item.ip}</span>` : '';
+        const adminBadge = isAdmin ? '<span style="background:var(--green);color:#000;padding:2px 6px;border-radius:4px;font-size:10px;">管理员</span>' : '';
+        const timeStr = item.time ? new Date(item.time).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+        const sizeLabel = item.size || item.ratio || '';
+        const promptText = item.prompt || '';
+        const originalText = item.originalPrompt || '';
+        const hasOptimized = !!originalText && originalText !== promptText;
+        const promptLabel = hasOptimized ? '<span style="font-size:10px;background:var(--accent);color:#000;padding:1px 4px;border-radius:3px;">优化</span>' : '';
+        el.innerHTML = `
+          <img src="${dataUrl}" alt="历史图片" />
+          <div class="history-meta" style="flex-direction:column;align-items:flex-start;gap:4px;">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;">
+              ${adminBadge}
+              ${ipTag}
+              <span style="font-size:11px;color:var(--subtle);">${sizeLabel} ${timeStr}</span>
+            </div>
+            ${hasOptimized ? `<div style="font-size:11px;color:var(--subtle);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="原始: ${originalText}">原始: ${originalText}</div>` : ''}
+            <div style="font-size:12px;color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${promptText}">${promptLabel} ${promptText}</div>
+          </div>
+          <button class="del-btn" data-id="${item.id}">&times;</button>
+        `;
+        el.querySelector('img').addEventListener('click', () => openLightbox(dataUrl));
+        el.querySelector('.del-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteHistoryItem(item.id);
+        });
+        historyGrid.appendChild(el);
+      });
+    }
+
+    clearHistoryBtn.addEventListener('click', () => {
+      if (confirm('确定清空所有生成历史？')) clearAllHistory();
+    });
+
+    // --- Optimize prompt button ---
+    optimizeBtn.addEventListener('click', async () => {
+      const prompt = promptInput.value.trim();
+      if (!prompt) {
+        setStatus('请先输入提示词', 'error');
+        return;
+      }
+      optimizeBtn.disabled = true;
+      optimizeBtn.textContent = '🎲 优化中…';
+      setStatus('正在用 DeepSeek V4 优化提示词…');
+      try {
+        const resp = await fetch(BASE_URL + '/api/ai/public/images/optimize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        const data = await resp.json();
+        if (data.ok && data.optimized) {
+          promptInput.value = data.optimized;
+          setStatus('提示词已优化并填入！', 'success');
+        } else {
+          setStatus('优化失败：' + (data.error || '未知错误'), 'error');
+        }
+      } catch (err) {
+        setStatus('优化失败：' + err.message, 'error');
+      } finally {
+        optimizeBtn.disabled = false;
+        optimizeBtn.textContent = '🎲 摇一摇生成提示词';
+      }
+    });
+
+    // --- Lightbox ---
+    function openLightbox(src) {
+      lightboxImg.src = src;
+      lightbox.classList.add('show');
+    }
+    function closeLightbox() {
+      lightbox.classList.remove('show');
+      lightboxImg.src = '';
+    }
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox || e.target === lightboxClose) closeLightbox();
+    });
+    lightboxClose.addEventListener('click', closeLightbox);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    // --- Status ---
+    function setStatus(message, type) {
+      statusBox.textContent = message;
+      statusBox.className = 'status show' + (type ? ' ' + type : '');
+    }
+    function clearStatus() {
+      statusBox.textContent = '';
+      statusBox.className = 'status';
+    }
+
+    // --- Progress animation ---
+    function startProgress() {
+      progressPanel.classList.add('show');
+      empty.style.display = 'none';
+      let stageIdx = 0;
+      const startTime = Date.now();
+
+      function tick() {
+        const stage = PROGRESS_STAGES[Math.min(stageIdx, PROGRESS_STAGES.length - 1)];
+        stageLabel.textContent = stage.label;
+        stageSub.textContent = stage.sub;
+        progressFill.style.width = stage.pct + '%';
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        progressElapsed.textContent = '已用时 ' + elapsed + 's';
+      }
+      tick();
+      progressTimer = setInterval(() => {
+        if (stageIdx < PROGRESS_STAGES.length - 1) stageIdx++;
+        tick();
+      }, 4500);
+      elapsedTimer = setInterval(() => {
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        progressElapsed.textContent = '已用时 ' + elapsed + 's';
+      }, 1000);
+    }
+    function stopProgress(success) {
+      clearInterval(progressTimer);
+      clearInterval(elapsedTimer);
+      if (success) {
+        progressFill.style.width = '100%';
+        stageLabel.textContent = '生成完成！';
+        stageSub.textContent = '图片已就绪';
+        setTimeout(() => { progressPanel.classList.remove('show'); }, 800);
+      } else {
+        progressPanel.classList.remove('show');
+      }
+    }
+
+    function setLoading(isLoading) {
+      generateBtn.disabled = isLoading;
+      generateBtn.textContent = isLoading ? '生成中…' : '生成图片';
+      if (isLoading) startProgress();
+    }
+
+    // --- Helpers ---
+    function base64ToDataUrl(base64, format) {
+      return 'data:image/' + format + ';base64,' + base64;
+    }
+    async function copyText(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = button.textContent;
+        button.textContent = '已复制';
+        setTimeout(() => { button.textContent = original; }, 1200);
+      } catch { setStatus('复制失败，请手动复制。', 'error'); }
+    }
+    function downloadDataUrl(dataUrl, index, format) {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'generated-' + Date.now() + '-' + index + '.' + format;
+      a.click();
+    }
+
+    // --- Render results ---
+    function renderResults(images, format, size) {
+      results.innerHTML = '';
+      const ratio = SIZE_RATIO_MAP[size] || size;
+      if (!images.length) { empty.style.display = 'grid'; return; }
+      empty.style.display = 'none';
+
+      images.forEach((item, index) => {
+        const dataUrl = base64ToDataUrl(item.b64_json, format);
+        const card = document.createElement('article');
+        card.className = 'result-card';
+        card.innerHTML = `
+          <div class="img-wrap">
+            <img src="${dataUrl}" alt="生成结果 ${index + 1}" />
+            <span class="zoom-hint">点击放大</span>
+          </div>
+          <div class="meta">
+            <div class="title">
+              第 ${index + 1} 张 · ${ratio}
+            </div>
+            <div class="actions">
+              <button class="button primary sm" data-action="download">下载图片</button>
+              <button class="button sm" data-action="copy">复制 Data URL</button>
+            </div>
+          </div>
+        `;
+        card.querySelector('.img-wrap').addEventListener('click', () => openLightbox(dataUrl));
+        card.querySelector('[data-action="download"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          downloadDataUrl(dataUrl, index + 1, format);
+        });
+        card.querySelector('[data-action="copy"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          copyText(dataUrl, e.target);
+        });
+        results.appendChild(card);
+      });
+
+      // Refresh history from server after generation
+      setTimeout(renderHistory, 500);
+    }
+
+    // --- Generate ---
+    async function generateImages() {
+      const prompt = promptInput.value.trim();
+      const size = sizeInput.value;
+      const quality = qualityInput.value;
+      const n = Number(countInput.value);
+      const output_format = formatInput.value;
+
+      if (!prompt) { setStatus('请输入 Prompt。', 'error'); return; }
+
+      clearStatus();
+      setLoading(true);
+      results.innerHTML = '';
+      sizeBadge.textContent = '比例: ' + (SIZE_RATIO_MAP[size] || size);
+      countBadge.textContent = 'N: ' + n;
+
+      // 查询排队状态
+      try {
+        const qResp = await fetch(BASE_URL + '/api/ai/public/images/queue', { method: 'GET' });
+        if (qResp.ok) {
+          const qData = await qResp.json();
+          if (qData.waiting > 0) {
+            generateBtn.textContent = '排队中…（前面' + qData.waiting + '人）';
+            setStatus('远端服务繁忙，前面还有 ' + qData.waiting + ' 个任务在排队，请耐心等待。');
+          }
+        }
+      } catch (_) { /* 忽略排队查询失败 */ }
+
+      // 串行排队可能等待较久，timeout 设 5 分钟
+      controller?.abort();
+      controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 300000);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'gpt-image-2', prompt, size, quality, output_format, n }),
+          signal: controller.signal,
+        });
+
+        const raw = await response.text();
+        let json = null;
+        try { json = JSON.parse(raw); } catch { throw new Error('接口没有返回合法 JSON，可能是跨域、网关或服务异常。'); }
+
+        if (!response.ok) {
+          const message = json?.error || json?.message || ('请求失败，状态码 ' + response.status);
+          const raw = json?.details || null;
+          throw { message, raw };
+        }
+
+        const images = Array.isArray(json?.data) ? json.data.filter((item) => item && item.b64_json) : [];
+        if (!images.length) throw { message: '接口返回成功，但没有拿到图片数据。' };
+
+        stopProgress(true);
+        renderResults(images, output_format, size);
+        setStatus('生成成功，共返回 ' + images.length + ' 张图片。', 'success');
+        fetchStats(); // 刷新生图计数
+      } catch (error) {
+        let message = '生成失败，请稍后重试。';
+        if (error.name === 'AbortError') {
+          message = '请求超时（排队或生成超过 5 分钟），请稍后重试。';
+        } else if (typeof error === 'object' && error.message) {
+          message = error.message;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        setStatus(message, 'error');
+        stopProgress(false);
+        if (!results.children.length) empty.style.display = 'grid';
+      } finally {
+        clearTimeout(timer);
+        setLoading(false);
+      }
+    }
+
+    // --- Event listeners ---
+    generateBtn.addEventListener('click', generateImages);
+    fillDemoBtn.addEventListener('click', () => {
+      promptInput.value = '一位韩系女团风格的年轻女孩，超写实摄影，9:16，iPhone 15 Pro Max 广角镜头质感，柔和电影级补光，面部精致，背景简洁，高级时尚大片';
+      setStatus('已填入示例 Prompt，你可以直接生成或继续修改。');
+    });
+    clearBtn.addEventListener('click', () => {
+      results.innerHTML = '';
+      empty.style.display = 'grid';
+      clearStatus();
+      sizeBadge.textContent = '比例: -';
+      countBadge.textContent = 'N: -';
+    });
+    scrollToFormBtn.addEventListener('click', () => {
+      document.getElementById('generatorPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // --- Stats counter with animation ---
+    let lastVisits = 0;
+    let lastImages = 0;
+
+    function animateNumber(el, from, to) {
+      if (from === to) return;
+      el.classList.remove('pop');
+      void el.offsetWidth; // reflow
+      el.classList.add('pop');
+      const duration = 600;
+      const start = performance.now();
+      function step(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+        const current = Math.round(from + (to - from) * eased);
+        el.textContent = current.toLocaleString();
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    async function fetchStats() {
+      try {
+        const resp = await fetch(STATS_ENDPOINT);
+        const data = await resp.json();
+        const newVisits = data.visits || 0;
+        const newImages = data.images || 0;
+        animateNumber(statVisitsEl, lastVisits, newVisits);
+        animateNumber(statImagesEl, lastImages, newImages);
+        lastVisits = newVisits;
+        lastImages = newImages;
+      } catch { /* ignore */ }
+    }
+
+    // --- Init: admin key management (hidden behind ⋮ button) ---
+    async function checkAdminKey(key) {
+      if (!key) { adminModeBadge.style.display = 'none'; return false; }
+      try {
+        const resp = await fetch(`${HISTORY_ENDPOINT}?admin_key=${encodeURIComponent(key)}`);
+        const data = await resp.json();
+        if (data.admin) {
+          adminModeBadge.style.display = 'inline';
+          return true;
+        } else {
+          adminModeBadge.style.display = 'none';
+          return false;
+        }
+      } catch {
+        adminModeBadge.style.display = 'none';
+        return false;
+      }
+    }
+
+    const savedAdminKey = localStorage.getItem('image_gen_admin_key');
+    if (savedAdminKey) {
+      adminKey = savedAdminKey;
+      adminKeyInput.value = savedAdminKey;
+      checkAdminKey(savedAdminKey).then(ok => {
+        adminStatus.textContent = ok ? '已启用（管理员）' : '密钥无效';
+        adminStatus.style.color = ok ? 'var(--green)' : 'var(--red)';
+      });
+    }
+    adminToggleBtn.addEventListener('click', () => {
+      const showing = adminPanel.style.display === 'block';
+      adminPanel.style.display = showing ? 'none' : 'block';
+      if (!showing) adminKeyInput.focus();
+    });
+    adminKeyConfirm.addEventListener('click', async () => {
+      const key = adminKeyInput.value.trim();
+      if (key) {
+        adminKey = key;
+        localStorage.setItem('image_gen_admin_key', key);
+        const ok = await checkAdminKey(key);
+        adminStatus.textContent = ok ? '已启用（管理员）' : '密钥无效';
+        adminStatus.style.color = ok ? 'var(--green)' : 'var(--red)';
+        renderHistory();
+      } else {
+        adminKey = '';
+        localStorage.removeItem('image_gen_admin_key');
+        adminStatus.textContent = '';
+        adminModeBadge.style.display = 'none';
+        renderHistory();
+      }
+    });
+    adminKeyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') adminKeyConfirm.click();
+    });
+
+    // --- Init: render history on load ---
+    fetchStats();
+    renderHistory();
+  </script>
+</body>
+</html>

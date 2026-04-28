@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+server/.env
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Tunnel log
+_tunnel.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

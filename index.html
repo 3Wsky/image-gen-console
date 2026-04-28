@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenAI Images API 兼容文档</title>
+  <meta name="description" content="OpenAI Images API 兼容文档，包含图片生成接口、请求参数、示例代码与错误说明。" />
+  <style>
+    :root {
+      --bg: #060816;
+      --bg-soft: rgba(14, 19, 38, 0.78);
+      --panel: rgba(12, 16, 32, 0.82);
+      --panel-strong: rgba(15, 21, 42, 0.94);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.58);
+      --subtle: rgba(255, 255, 255, 0.34);
+      --cyan: #62e7ff;
+      --violet: #9b7bff;
+      --amber: #ffbe5c;
+      --green: #55e39b;
+      --red: #ff6b7a;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 16px;
+      --max: 1180px;
+      font-synthesis-weight: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 10%, rgba(98, 231, 255, 0.12), transparent 26%),
+        radial-gradient(circle at 88% 14%, rgba(155, 123, 255, 0.14), transparent 28%),
+        radial-gradient(circle at 72% 100%, rgba(85, 227, 155, 0.1), transparent 24%),
+        linear-gradient(180deg, #040611 0%, #060816 46%, #070a19 100%);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+
+    .page {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+      padding: 24px 0 72px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      background: linear-gradient(180deg, rgba(13, 18, 36, 0.88), rgba(9, 13, 28, 0.78));
+      box-shadow: var(--shadow);
+      padding: 28px;
+      backdrop-filter: blur(22px);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(255, 190, 92, 0.16), transparent 25%),
+        radial-gradient(circle at 100% 0%, rgba(98, 231, 255, 0.16), transparent 22%),
+        radial-gradient(circle at 100% 100%, rgba(155, 123, 255, 0.16), transparent 26%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1.35fr 0.9fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: 1px solid rgba(98, 231, 255, 0.18);
+      border-radius: 999px;
+      background: rgba(98, 231, 255, 0.08);
+      color: var(--cyan);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-size: clamp(34px, 6vw, 56px);
+      line-height: 1.06;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+
+    .button:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.07); }
+    .button.primary {
+      border-color: rgba(255, 190, 92, 0.25);
+      background: linear-gradient(135deg, #ffbe5c, #ff9d4d);
+      color: #111318;
+      font-weight: 700;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .glass-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-soft);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(16px);
+    }
+
+    .stat-card {
+      padding: 16px;
+    }
+
+    .stat-card .label {
+      color: var(--subtle);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .stat-card .value {
+      margin-top: 10px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-card .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .security {
+      padding: 18px;
+      border: 1px solid rgba(255, 107, 122, 0.18);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 107, 122, 0.08);
+    }
+
+    .security .title {
+      font-size: 12px;
+      color: #ffc4cb;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .security p {
+      margin: 10px 0 0;
+      color: rgba(255, 232, 235, 0.82);
+      font-size: 13px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+      padding: 18px;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 14px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--subtle);
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav a {
+      display: block;
+      padding: 11px 12px;
+      border-radius: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      transition: 160ms ease;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+    }
+
+    .content {
+      display: grid;
+      gap: 20px;
+    }
+
+    .section {
+      padding: 22px;
+    }
+
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .section-header h3 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(98, 231, 255, 0.08);
+      border: 1px solid rgba(98, 231, 255, 0.18);
+      color: var(--cyan);
+      font-size: 12px;
+    }
+
+    .endpoint {
+      display: grid;
+      gap: 14px;
+    }
+
+    .endpoint-box,
+    .code-block,
+    .table-wrap,
+    .info-grid > div,
+    .error-grid > div {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--panel);
+    }
+
+    .endpoint-box {
+      padding: 16px;
+    }
+
+    .label-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mono {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: #dff9ff;
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    .info-grid,
+    .error-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .info-grid > div,
+    .error-grid > div {
+      padding: 16px;
+    }
+
+    .info-grid .title,
+    .error-grid .title {
+      font-size: 12px;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .info-grid .value,
+    .error-grid .value {
+      margin-top: 12px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .info-grid .desc,
+    .error-grid .desc {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .code-block {
+      overflow: hidden;
+    }
+
+    .code-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .copy-btn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 12px;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .copy-btn:hover { background: rgba(255, 255, 255, 0.07); }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      overflow: auto;
+      color: #d8f8ff;
+      font-size: 13px;
+      line-height: 1.72;
+    }
+
+    .table-wrap { overflow: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .success { color: var(--green); }
+    .warn { color: var(--amber); }
+    .danger { color: var(--red); }
+    .cyan { color: var(--cyan); }
+
+    .footer {
+      margin-top: 12px;
+      padding: 18px 22px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .hero-inner,
+      .layout,
+      .info-grid,
+      .error-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page { width: min(calc(100% - 20px), var(--max)); padding-top: 12px; }
+      .hero, .section { padding: 18px; }
+      .stat-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <div class="eyebrow">OpenAI Compatible · Images</div>
+          <h1>OpenAI Images API 兼容文档</h1>
+          <p>这是一个用于图片生成的兼容接口文档，支持以 OpenAI Images 风格调用 `/v1/images/generations`，返回标准 `data[].b64_json` 字段。你可以直接基于现有的 OpenAI Images 调用习惯接入。</p>
+          <div class="hero-actions">
+            <a class="button primary" href="#quickstart">查看快速开始</a>
+            <a class="button" href="./generate.html">进入生图控制台</a>
+            <a class="button" href="#python">查看 Python 示例</a>
+            <a class="button" href="https://api.dlapi.xyz/" target="_blank" rel="noreferrer">赞助站点</a>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="stat-grid">
+            <div class="glass-card stat-card">
+              <div class="label">请求端点</div>
+              <div class="value cyan">/v1/images/generations</div>
+              <div class="hint">兼容 OpenAI 图片生成请求格式</div>
+            </div>
+            <div class="glass-card stat-card">
+              <div class="label">公开模型</div>
+              <div class="value" style="color: var(--violet);">gpt-image-2</div>
+              <div class="hint">当前文档指定固定模型名称</div>
+            </div>
+            <div class="glass-card stat-card">
+              <div class="label">输出字段</div>
+              <div class="value" style="color: var(--green);">b64_json</div>
+              <div class="hint">Base64 解码后即可保存为图片</div>
+            </div>
+            <div class="glass-card stat-card">
+              <div class="label">推荐格式</div>
+              <div class="value" style="color: var(--amber);">PNG</div>
+              <div class="hint">推荐 `quality=high` + `output_format=png`</div>
+            </div>
+          </div>
+          <div class="security">
+            <div class="title">Security Notice</div>
+            <p>静态文档页面不应直接暴露真实 Bearer Key。以下示例中的 Key 已使用占位符，请在你自己的服务端或私密环境中替换为真实值。</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar glass-card">
+        <h2>文档导航</h2>
+        <nav class="nav">
+          <a href="./generate.html">在线生图控制台</a>
+          <a href="#endpoint">请求端点</a>
+          <a href="#quickstart">快速开始</a>
+          <a href="#params">请求参数</a>
+          <a href="#examples">请求示例</a>
+          <a href="#response">返回格式</a>
+          <a href="#python">Python 示例</a>
+          <a href="#errors">状态与错误</a>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <section id="endpoint" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>请求端点</h3>
+              <p>调用兼容图片生成接口时，请使用以下 HTTP 地址与 Bearer 鉴权方式。</p>
+            </div>
+            <div class="tag">POST · Images Generations</div>
+          </div>
+          <div class="endpoint">
+            <div class="endpoint-box">
+              <div class="label-row">
+                <span class="pill">Method: POST</span>
+                <span class="pill">Model: gpt-image-2</span>
+                <span class="pill">Auth: Bearer</span>
+              </div>
+              <div class="mono">http://10.0.88.12:7777/v1/images/generations</div>
+            </div>
+            <div class="info-grid">
+              <div>
+                <div class="title">鉴权方式</div>
+                <div class="value">Authorization: Bearer YOUR_API_KEY</div>
+                <div class="desc">不要把真实 Key 硬编码到公开静态页面、前端仓库或客户端源码中。</div>
+              </div>
+              <div>
+                <div class="title">公开模型</div>
+                <div class="value">gpt-image-2</div>
+                <div class="desc">请求体中的 `model` 字段固定填写为 `gpt-image-2`。</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="quickstart" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>快速开始</h3>
+              <p>发送一个 POST 请求到图片生成接口，提交提示词和图片参数。成功后会返回标准的 `data[].b64_json` 字段，解码后即可保存为图片文件。</p>
+            </div>
+          </div>
+          <div class="code-block">
+            <div class="code-head">
+              <span>cURL Example</span>
+              <button class="copy-btn" data-copy-target="curl-example">复制代码</button>
+            </div>
+            <pre id="curl-example">curl http://10.0.88.12:7777/v1/images/generations \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2",
+    "prompt": "一只可爱的白色小猫，超写实摄影风格，柔和自然光，浅景深",
+    "size": "1024x1024",
+    "quality": "high",
+    "output_format": "png"
+  }'</pre>
+          </div>
+        </section>
+
+        <section id="params" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>请求参数</h3>
+              <p>以下参数与 OpenAI Images 风格保持兼容，适合直接复用你的图片生成请求结构。</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>字段</th>
+                  <th>类型</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>model</code></td>
+                  <td>string</td>
+                  <td>固定填写 <code>gpt-image-2</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>prompt</code></td>
+                  <td>string</td>
+                  <td>图片描述文本，不能为空。</td>
+                </tr>
+                <tr>
+                  <td><code>size</code></td>
+                  <td>string</td>
+                  <td>输出尺寸，例如 <code>1024x1024</code>、<code>1024x1536</code>、<code>1536x1024</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>quality</code></td>
+                  <td>string</td>
+                  <td>图片质量，当前推荐 <code>high</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>output_format</code></td>
+                  <td>string</td>
+                  <td>输出格式，当前推荐 <code>png</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>n</code></td>
+                  <td>integer</td>
+                  <td>生成图片数量，支持 1-10。例如传 2 会返回两张图。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="examples" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>请求示例</h3>
+              <p>支持单图与多图生成，返回格式统一为 `data[].b64_json`。</p>
+            </div>
+          </div>
+          <div class="content" style="gap: 14px;">
+            <div class="code-block">
+              <div class="code-head">
+                <span>单图生成</span>
+                <button class="copy-btn" data-copy-target="single-json">复制 JSON</button>
+              </div>
+              <pre id="single-json">{
+  "model": "gpt-image-2",
+  "prompt": "一位韩系女团风格的年轻女孩，超写实摄影，9:16，iPhone 15 Pro Max 广角镜头质感",
+  "size": "1024x1536",
+  "quality": "high",
+  "output_format": "png"
+}</pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head">
+                <span>多图生成</span>
+                <button class="copy-btn" data-copy-target="multi-json">复制 JSON</button>
+              </div>
+              <pre id="multi-json">{
+  "model": "gpt-image-2",
+  "prompt": "两只可爱的白色小猫，超写实摄影风格，柔和自然光，浅景深",
+  "size": "1024x1024",
+  "quality": "high",
+  "output_format": "png",
+  "n": 2
+}</pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="response" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>返回格式</h3>
+              <p>成功时返回标准 JSON，对应图片数据位于 `data[].b64_json`。</p>
+            </div>
+          </div>
+          <div class="code-block">
+            <div class="code-head">
+              <span>Success Response</span>
+              <button class="copy-btn" data-copy-target="response-json">复制响应</button>
+            </div>
+            <pre id="response-json">{
+  "created": 1776942000,
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAA..."
+    }
+  ]
+}</pre>
+          </div>
+        </section>
+
+        <section id="python" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>Python 示例</h3>
+              <p>下面的示例演示了如何使用 `httpx` 发起请求，并把返回的 Base64 数据解码后保存为 PNG 文件。</p>
+            </div>
+          </div>
+          <div class="code-block">
+            <div class="code-head">
+              <span>Python</span>
+              <button class="copy-btn" data-copy-target="python-example">复制代码</button>
+            </div>
+            <pre id="python-example">import base64
+import httpx
+
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json",
+}
+
+body = {
+    "model": "gpt-image-2",
+    "prompt": "一只可爱的白色小猫，超写实摄影风格，柔和自然光，浅景深",
+    "size": "1024x1024",
+    "quality": "high",
+    "output_format": "png"
+}
+
+resp = httpx.post(
+    "http://10.0.88.12:7777/v1/images/generations",
+    headers=headers,
+    json=body,
+    timeout=300
+)
+resp.raise_for_status()
+data = resp.json()
+
+with open("output.png", "wb") as f:
+    f.write(base64.b64decode(data["data"][0]["b64_json"]))</pre>
+          </div>
+        </section>
+
+        <section id="errors" class="section glass-card">
+          <div class="section-header">
+            <div>
+              <h3>状态与错误</h3>
+              <p>常见返回状态如下，建议你在客户端做好错误提示与重试处理。</p>
+            </div>
+          </div>
+          <div class="error-grid">
+            <div>
+              <div class="title success">200 OK</div>
+              <div class="value">请求成功</div>
+              <div class="desc">请求成功，返回图片 Base64 数据。</div>
+            </div>
+            <div>
+              <div class="title danger">401 Unauthorized</div>
+              <div class="value">鉴权失败</div>
+              <div class="desc">未携带有效 Bearer Key，或 Key 已失效。</div>
+            </div>
+            <div>
+              <div class="title warn">400 Bad Request</div>
+              <div class="value">参数错误</div>
+              <div class="desc">例如 `prompt` 为空，或 `model` 不是 `gpt-image-2`。</div>
+            </div>
+            <div>
+              <div class="title danger">502 Bad Gateway</div>
+              <div class="value">上游生图失败</div>
+              <div class="desc">通常表示上游生图服务异常，建议稍后重试。</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section glass-card footer">
+          赞助站点：
+          <a class="cyan" href="https://api.dlapi.xyz/" target="_blank" rel="noreferrer">https://api.dlapi.xyz/</a>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.copy-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const target = document.getElementById(button.getAttribute('data-copy-target'));
+        if (!target) return;
+        try {
+          await navigator.clipboard.writeText(target.textContent || '');
+          const original = button.textContent;
+          button.textContent = '已复制';
+          setTimeout(() => {
+            button.textContent = original;
+          }, 1400);
+        } catch (error) {
+          const original = button.textContent;
+          button.textContent = '复制失败';
+          setTimeout(() => {
+            button.textContent = original;
+          }, 1400);
+        }
+      });
+    });
+
+    const links = Array.from(document.querySelectorAll('.nav a'));
+    const sections = links
+      .map((link) => document.querySelector(link.getAttribute('href')))
+      .filter(Boolean);
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const id = '#' + entry.target.id;
+        const link = links.find((item) => item.getAttribute('href') === id);
+        if (!link) return;
+        if (entry.isIntersecting) {
+          links.forEach((item) => item.classList.remove('active'));
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-35% 0px -55% 0px', threshold: 0.01 });
+
+    sections.forEach((section) => observer.observe(section));
+  </script>
+</body>
+</html>

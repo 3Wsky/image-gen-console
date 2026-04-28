@@ -1,0 +1,21 @@
+name = "image-gen-console"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = "."
+
+# KV 命名空间绑定（部署后通过 Dashboard 或 CLI 创建）
+# 部署前先运行:
+#   wrangler kv namespace create STATS_KV
+#   wrangler kv namespace create HISTORY_KV
+# 然后把返回的 id 填到下面
+
+[[kv_namespaces]]
+binding = "STATS_KV"
+id = "your-stats-kv-id"
+
+[[kv_namespaces]]
+binding = "HISTORY_KV"
+id = "your-history-kv-id"
+
+# 环境变量（敏感信息建议用 wrangler secret put）
+[vars]
+IMAGE_GEN_ADMIN_KEY = "your-admin-key"
